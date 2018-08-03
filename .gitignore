@@ -10,3 +10,4 @@ Gemfile*.lock
 .rvmrc
 /doc/
 .DS_Store
+.ruby-version

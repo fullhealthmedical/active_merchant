@@ -23,8 +23,20 @@ class MonerisRemoteTest < Test::Unit::TestCase
 
   def test_successful_purchase_with_network_tokenization
     @credit_card = network_tokenization_credit_card('4242424242424242',
-      payment_cryptogram: "BwABB4JRdgAAAAAAiFF2AAAAAAA=",
+      payment_cryptogram: 'BwABB4JRdgAAAAAAiFF2AAAAAAA=',
       verification_value: nil
+    )
+    assert response = @gateway.purchase(@amount, @credit_card, @options)
+    assert_success response
+    assert_equal 'Approved', response.message
+    assert_false response.authorization.blank?
+  end
+
+  def test_successful_purchase_with_network_tokenization_apple_pay_source
+    @credit_card = network_tokenization_credit_card('4242424242424242',
+      payment_cryptogram: 'BwABB4JRdgAAAAAAiFF2AAAAAAA=',
+      verification_value: nil,
+      source: :apple_pay
     )
     assert response = @gateway.purchase(@amount, @credit_card, @options)
     assert_success response
@@ -75,7 +87,7 @@ class MonerisRemoteTest < Test::Unit::TestCase
 
   def test_successful_authorization_with_network_tokenization
     @credit_card = network_tokenization_credit_card('4242424242424242',
-      payment_cryptogram: "BwABB4JRdgAAAAAAiFF2AAAAAAA=",
+      payment_cryptogram: 'BwABB4JRdgAAAAAAiFF2AAAAAAA=',
       verification_value: nil
     )
     assert response = @gateway.authorize(@amount, @credit_card, @options)
@@ -114,35 +126,41 @@ class MonerisRemoteTest < Test::Unit::TestCase
     assert_equal 'Declined', response.message
   end
 
+  def test_successful_verify
+    response = @gateway.verify(@credit_card, @options)
+    assert_success response
+    assert_match 'Approved', response.message
+  end
+
   def test_successful_store
     assert response = @gateway.store(@credit_card)
     assert_success response
-    assert_equal "Successfully registered cc details", response.message
-    assert response.params["data_key"].present?
-    @data_key = response.params["data_key"]
+    assert_equal 'Successfully registered cc details', response.message
+    assert response.params['data_key'].present?
+    @data_key = response.params['data_key']
   end
 
   def test_successful_unstore
     test_successful_store
     assert response = @gateway.unstore(@data_key)
     assert_success response
-    assert_equal "Successfully deleted cc details", response.message
-    assert response.params["data_key"].present?
+    assert_equal 'Successfully deleted cc details', response.message
+    assert response.params['data_key'].present?
   end
 
   def test_update
     test_successful_store
     assert response = @gateway.update(@data_key, @credit_card)
     assert_success response
-    assert_equal "Successfully updated cc details", response.message
-    assert response.params["data_key"].present?
+    assert_equal 'Successfully updated cc details', response.message
+    assert response.params['data_key'].present?
   end
 
   def test_successful_purchase_with_vault
     test_successful_store
     assert response = @gateway.purchase(@amount, @data_key, @options)
     assert_success response
-    assert_equal "Approved", response.message
+    assert_equal 'Approved', response.message
     assert_false response.authorization.blank?
   end
 
@@ -213,5 +231,16 @@ class MonerisRemoteTest < Test::Unit::TestCase
       'street_match' => nil,
       'postal_match' => nil
     })
+  end
+
+    def test_purchase_scrubbing
+    transcript = capture_transcript(@gateway) do
+      @gateway.purchase(@amount, @credit_card, @options)
+    end
+    transcript = @gateway.scrub(transcript)
+
+    assert_scrubbed(credit_card.number, transcript)
+    assert_scrubbed(credit_card.verification_value, transcript)
+    assert_scrubbed(@gateway.options[:password], transcript)
   end
 end

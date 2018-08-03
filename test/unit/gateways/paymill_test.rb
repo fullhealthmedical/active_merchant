@@ -13,13 +13,13 @@ class PaymillTest < Test::Unit::TestCase
 
     assert response = @gateway.purchase(@amount, @credit_card)
     assert_success response
-    assert_equal "tran_c94ba7df2dae8fd55028df41173c;", response.authorization
-    assert_equal "General success response.", response.message
+    assert_equal 'tran_c94ba7df2dae8fd55028df41173c;', response.authorization
+    assert_equal 'Operation successful', response.message
     assert_equal 20000, response.params['data']['response_code']
     assert_equal 'pay_b8e6a28fc5e5e1601cdbefbaeb8a', response.params['data']['payment']['id']
     assert_equal '5100', response.params['data']['payment']['last4']
-    assert_nil response.cvv_result["message"]
-    assert_nil response.avs_result["message"]
+    assert_nil response.cvv_result['message']
+    assert_nil response.avs_result['message']
     assert response.test?
   end
 
@@ -31,11 +31,18 @@ class PaymillTest < Test::Unit::TestCase
     assert_equal '000.100.201', response.params['transaction']['processing']['return']['code']
   end
 
+  def test_broken_gateway
+    @gateway.expects(:raw_ssl_request).returns(broken_gateway_response)
+    response = @gateway.purchase(@amount, @credit_card)
+    assert_failure response
+    assert_equal "File not found.\n", response.message
+  end
+
   def test_failed_purchase
     @gateway.stubs(:raw_ssl_request).returns(successful_store_response, failed_purchase_response)
     response = @gateway.purchase(@amount, @credit_card)
     assert_failure response
-    assert_equal 'Card declined by authorization system.', response.message
+    assert_equal 'Card declined', response.message
     assert_equal 50102, response.params['data']['response_code']
   end
 
@@ -74,26 +81,26 @@ class PaymillTest < Test::Unit::TestCase
     assert_success response
     assert response.test?
 
-    assert_equal "tran_4c612d5293e26d56d986eb89648c;preauth_fdf916cab73b97c4a139", response.authorization
-    assert_equal "General success response.", response.message
+    assert_equal 'tran_4c612d5293e26d56d986eb89648c;preauth_fdf916cab73b97c4a139', response.authorization
+    assert_equal 'Operation successful', response.message
     assert_equal '0004', response.params['data']['payment']['last4']
     assert_equal 20000, response.params['data']['response_code']
-    assert_nil response.avs_result["message"]
-    assert_nil response.cvv_result["message"]
+    assert_nil response.avs_result['message']
+    assert_nil response.cvv_result['message']
 
     @gateway.expects(:raw_ssl_request).returns(successful_capture_response)
     response = @gateway.capture(@amount, response.authorization)
     assert_success response
     assert response.test?
     assert_equal 20000, response.params['data']['response_code']
-    assert_equal "General success response.", response.message
+    assert_equal 'Operation successful', response.message
   end
 
   def test_failed_authorize
     @gateway.stubs(:raw_ssl_request).returns(successful_store_response, failed_authorize_response)
     response = @gateway.authorize(@amount, @credit_card)
     assert_failure response
-    assert_equal 'Card declined by authorization system.', response.message
+    assert_equal 'Card declined', response.message
     assert_equal 50102, response.params['data']['response_code']
   end
 
@@ -107,7 +114,7 @@ class PaymillTest < Test::Unit::TestCase
     response = @gateway.void(response.authorization)
     assert_success response
     assert response.test?
-    assert_equal "Transaction approved.", response.message
+    assert_equal 'Transaction approved.', response.message
   end
 
   def test_failed_capture
@@ -131,7 +138,7 @@ class PaymillTest < Test::Unit::TestCase
     assert_success refund
     assert response.test?
 
-    assert_equal 'General success response.', refund.message
+    assert_equal 'Operation successful', refund.message
     assert_equal 'tran_89c8728e94273510afa99ab64e45', refund.params['data']['transaction']['id']
     assert_equal 'refund_d02807f46181c0919016;', refund.authorization
     assert_equal 20000, refund.params['data']['response_code']
@@ -147,7 +154,7 @@ class PaymillTest < Test::Unit::TestCase
     assert_success refund
     assert response.test?
 
-    assert_equal 'General success response.', refund.message
+    assert_equal 'Operation successful', refund.message
     assert_equal 'tran_89c8728e94273510afa99ab64e45', refund.params['data']['transaction']['id']
     assert_equal 'refund_d02807f46181c0919016;', refund.authorization
     assert_equal 20000, refund.params['data']['response_code']
@@ -169,7 +176,7 @@ class PaymillTest < Test::Unit::TestCase
 
     assert response = @gateway.store(@credit_card)
     assert_success response
-    assert_equal "tok_4f9a571b39bd8d0b4db5", response.authorization
+    assert_equal 'tok_4f9a571b39bd8d0b4db5', response.authorization
     assert_equal "Request successfully processed in 'Merchant in Connector Test Mode'", response.message
     assert response.test?
   end
@@ -185,31 +192,31 @@ class PaymillTest < Test::Unit::TestCase
   def test_successful_purchase_with_token
     @gateway.stubs(:raw_ssl_request).returns(successful_purchase_response)
 
-    assert response = @gateway.purchase(@amount, "token")
+    assert response = @gateway.purchase(@amount, 'token')
     assert_success response
-    assert_equal "tran_c94ba7df2dae8fd55028df41173c;", response.authorization
-    assert_equal "General success response.", response.message
+    assert_equal 'tran_c94ba7df2dae8fd55028df41173c;', response.authorization
+    assert_equal 'Operation successful', response.message
     assert_equal 20000, response.params['data']['response_code']
     assert_equal 'pay_b8e6a28fc5e5e1601cdbefbaeb8a', response.params['data']['payment']['id']
     assert_equal '5100', response.params['data']['payment']['last4']
-    assert_nil response.cvv_result["message"]
-    assert_nil response.avs_result["message"]
+    assert_nil response.cvv_result['message']
+    assert_nil response.avs_result['message']
     assert response.test?
   end
 
   def test_successful_authorize_with_token
     @gateway.stubs(:raw_ssl_request).returns(successful_authorize_response)
 
-    assert response = @gateway.authorize(@amount, "token")
+    assert response = @gateway.authorize(@amount, 'token')
     assert_success response
     assert response.test?
 
-    assert_equal "tran_4c612d5293e26d56d986eb89648c;preauth_fdf916cab73b97c4a139", response.authorization
-    assert_equal "General success response.", response.message
+    assert_equal 'tran_4c612d5293e26d56d986eb89648c;preauth_fdf916cab73b97c4a139', response.authorization
+    assert_equal 'Operation successful', response.message
     assert_equal '0004', response.params['data']['payment']['last4']
     assert_equal 20000, response.params['data']['response_code']
-    assert_nil response.avs_result["message"]
-    assert_nil response.cvv_result["message"]
+    assert_nil response.avs_result['message']
+    assert_nil response.cvv_result['message']
   end
 
   def test_transcript_scrubbing
@@ -735,34 +742,20 @@ class PaymillTest < Test::Unit::TestCase
     MockResponse.new 412, %[{"error":"Amount to high","exception":"refund_amount_to_high"}]
   end
 
+  def broken_gateway_response
+    MockResponse.new(404, "File not found.\n")
+  end
+
   def failed_capture_response
     MockResponse.new 409, %[{"error":"Preauthorization has already been used","exception":"preauthorization_already_used"}]
   end
 
   def transcript
-    "connection_uri=https://test-token.paymill.com?account.number=5500000000000004&account.expiry.month=09&account.expiry.year=2016&account.verification=123"
+    'connection_uri=https://test-token.paymill.com?account.number=5500000000000004&account.expiry.month=09&account.expiry.year=2016&account.verification=123'
   end
 
   def scrubbed_transcript
-    "connection_uri=https://test-token.paymill.com?account.number=[FILTERED]&account.expiry.month=09&account.expiry.year=2016&account.verification=[FILTERED]"
+    'connection_uri=https://test-token.paymill.com?account.number=[FILTERED]&account.expiry.month=09&account.expiry.year=2016&account.verification=[FILTERED]'
   end
 
-  class MockResponse
-    attr_reader :code, :body
-    def self.succeeded(body)
-      MockResponse.new(200, body)
-    end
-
-    def self.failed(body)
-      MockResponse.new(422, body)
-    end
-
-    def initialize(code, body, headers={})
-      @code, @body, @headers = code, body, headers
-    end
-
-    def [](header)
-      @headers[header]
-    end
-  end
 end

@@ -25,14 +25,14 @@ module ActiveMerchant #:nodoc:
         'cvv2_not_checked' => 'X'
       }
 
-      self.test_url = 'https://raven.deepcovelabs.com/realtime/'
-      self.live_url = 'https://raven.deepcovelabs.com/realtime/'
+      self.live_url = 'https://raven.deepcovelabs.net/realtime/'
+      self.test_url = self.live_url
 
       self.supported_countries = ['US']
       self.supported_cardtypes = [:visa, :master]
       self.money_format = :cents
       self.default_currency = 'USD'
-      self.homepage_url = 'http://www.deepcovelabs.com/raven'
+      self.homepage_url = 'https://www.deepcovelabs.com/raven'
       self.display_name = 'Raven'
 
       def initialize(options = {})
@@ -159,11 +159,11 @@ module ActiveMerchant #:nodoc:
         return response['Message'] if response['Message']
 
         if response['Status'] == 'Approved'
-          "This transaction has been approved"
+          'This transaction has been approved'
         elsif response['Status'] == 'Declined'
-          "This transaction has been declined"
+          'This transaction has been declined'
         elsif response['Status'] == 'Voided'
-          "This transaction has been voided"
+          'This transaction has been voided'
         else
           response['Status']
         end
@@ -179,12 +179,12 @@ module ActiveMerchant #:nodoc:
         post['RequestID']     = request_id
         post['Signature']     = signature(action, post, parameters)
 
-        request = post.merge(parameters).collect { |key, value| "#{key}=#{CGI.escape(value.to_s)}" }.join("&")
+        request = post.merge(parameters).collect { |key, value| "#{key}=#{CGI.escape(value.to_s)}" }.join('&')
         request
       end
 
       def timestamp
-        Time.now.strftime("%Y-%m-%dT%H:%M:%S.Z")
+        Time.now.strftime('%Y-%m-%dT%H:%M:%S.Z')
       end
 
       def request_id

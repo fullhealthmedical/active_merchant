@@ -1,4 +1,4 @@
-require "nokogiri"
+require 'nokogiri'
 
 module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
@@ -26,6 +26,7 @@ module ActiveMerchant #:nodoc:
           add_allow_dup(xml)
           add_customer_data(xml, card_or_token, options)
           add_details(xml, options)
+          add_descriptor_name(xml, options)
           add_payment(xml, card_or_token, options)
         end
       end
@@ -43,6 +44,7 @@ module ActiveMerchant #:nodoc:
           add_allow_dup(xml)
           add_customer_data(xml, card_or_token,options)
           add_details(xml, options)
+          add_descriptor_name(xml, options)
           add_payment(xml, card_or_token, options)
         end
       end
@@ -60,6 +62,7 @@ module ActiveMerchant #:nodoc:
       def verify(card_or_token, options={})
         commit('CreditAccountVerify') do |xml|
           add_customer_data(xml, card_or_token, options)
+          add_descriptor_name(xml, options)
           add_payment(xml, card_or_token, options)
         end
       end
@@ -68,6 +71,17 @@ module ActiveMerchant #:nodoc:
         commit('CreditVoid') do |xml|
           add_reference(xml, transaction_id)
         end
+      end
+
+      def supports_scrubbing?
+        true
+      end
+
+      def scrub(transcript)
+        transcript.
+          gsub(%r((<hps:CardNbr>)[^<]*(<\/hps:CardNbr>))i, '\1[FILTERED]\2').
+          gsub(%r((<hps:CVV2>)[^<]*(<\/hps:CVV2>))i, '\1[FILTERED]\2').
+          gsub(%r((<hps:SecretAPIKey>)[^<]*(<\/hps:SecretAPIKey>))i, '\1[FILTERED]\2')
       end
 
       private
@@ -103,7 +117,7 @@ module ActiveMerchant #:nodoc:
         xml.hps :CardData do
           if card_or_token.respond_to?(:number)
             if card_or_token.track_data
-              xml.tag!("hps:TrackData", 'method'=>'swipe') do
+              xml.tag!('hps:TrackData', 'method'=>'swipe') do
                 xml.text! card_or_token.track_data
               end
               if options[:encryption_type]
@@ -146,6 +160,10 @@ module ActiveMerchant #:nodoc:
         xml.hps :AllowDup, 'Y'
       end
 
+      def add_descriptor_name(xml, options)
+        xml.hps :TxnDescriptor, options[:descriptor_name] if options[:descriptor_name]
+      end
+
       def build_request(action)
         xml = Builder::XmlMarkup.new(encoding: 'UTF-8')
         xml.instruct!(:xml, encoding: 'UTF-8')
@@ -184,7 +202,7 @@ module ActiveMerchant #:nodoc:
 
         doc = Nokogiri::XML(raw)
         doc.remove_namespaces!
-        if(header = doc.xpath("//Header").first)
+        if(header = doc.xpath('//Header').first)
           header.elements.each do |node|
             if (node.elements.size == 0)
               response[node.name] = node.text
@@ -195,13 +213,13 @@ module ActiveMerchant #:nodoc:
             end
           end
         end
-        if(transaction = doc.xpath("//Transaction/*[1]").first)
+        if(transaction = doc.xpath('//Transaction/*[1]').first)
           transaction.elements.each do |node|
             response[node.name] = node.text
           end
         end
-        if(fault = doc.xpath("//Fault/Reason/Text").first)
-          response["Fault"] = fault.text
+        if(fault = doc.xpath('//Fault/Reason/Text').first)
+          response['Fault'] = fault.text
         end
 
         response
@@ -211,7 +229,7 @@ module ActiveMerchant #:nodoc:
         data = build_request(action, &request)
 
         response = begin
-          parse(ssl_post((test? ? test_url : live_url), data, 'Content-type' => 'text/xml'))
+          parse(ssl_post((test? ? test_url : live_url), data, 'Content-Type' => 'text/xml'))
         rescue ResponseError => e
           parse(e.response.body)
         end
@@ -232,22 +250,22 @@ module ActiveMerchant #:nodoc:
 
       def successful?(response)
         (
-          (response["GatewayRspCode"] == "0") &&
-          ((response["RspCode"] || "00") == "00" || response["RspCode"] == "85")
+          (response['GatewayRspCode'] == '0') &&
+          ((response['RspCode'] || '00') == '00' || response['RspCode'] == '85')
         )
       end
 
       def message_from(response)
-        if(response["Fault"])
-          response["Fault"]
-        elsif(response["GatewayRspCode"] == "0")
-          if(response["RspCode"] != "00" && response["RspCode"] != "85")
-            issuer_message(response["RspCode"])
+        if(response['Fault'])
+          response['Fault']
+        elsif(response['GatewayRspCode'] == '0')
+          if(response['RspCode'] != '00' && response['RspCode'] != '85')
+            issuer_message(response['RspCode'])
           else
             response['GatewayRspMsg']
           end
         else
-          (GATEWAY_MESSAGES[response["GatewayRspCode"]] || response["GatewayRspMsg"])
+          (GATEWAY_MESSAGES[response['GatewayRspCode']] || response['GatewayRspMsg'])
         end
       end
 
@@ -260,27 +278,27 @@ module ActiveMerchant #:nodoc:
       end
 
       ISSUER_MESSAGES = {
-        "13" => "Must be greater than or equal 0.",
-        "14" => "The card number is incorrect.",
-        "54" => "The card has expired.",
-        "55" => "The 4-digit pin is invalid.",
-        "75" => "Maximum number of pin retries exceeded.",
-        "80" => "Card expiration date is invalid.",
-        "86" => "Can't verify card pin number."
+        '13' => 'Must be greater than or equal 0.',
+        '14' => 'The card number is incorrect.',
+        '54' => 'The card has expired.',
+        '55' => 'The 4-digit pin is invalid.',
+        '75' => 'Maximum number of pin retries exceeded.',
+        '80' => 'Card expiration date is invalid.',
+        '86' => "Can't verify card pin number."
       }
       def issuer_message(code)
-        return "The card was declined." if %w(02 03 04 05 41 43 44 51 56 61 62 63 65 78).include?(code)
-        return "An error occurred while processing the card." if %w(06 07 12 15 19 12 52 53 57 58 76 77 91 96 EC).include?(code)
+        return 'The card was declined.' if %w(02 03 04 05 41 43 44 51 56 61 62 63 65 78).include?(code)
+        return 'An error occurred while processing the card.' if %w(06 07 12 15 19 12 52 53 57 58 76 77 91 96 EC).include?(code)
         return "The card's security code is incorrect." if %w(EB N7).include?(code)
         ISSUER_MESSAGES[code]
       end
 
       GATEWAY_MESSAGES = {
-        "-2" => "Authentication error. Please double check your service configuration.",
-        "12" => "Invalid CPC data.",
-        "13" => "Invalid card data.",
-        "14" => "The card number is not a valid credit card number.",
-        "30" => "Gateway timed out."
+        '-2' => 'Authentication error. Please double check your service configuration.',
+        '12' => 'Invalid CPC data.',
+        '13' => 'Invalid card data.',
+        '14' => 'The card number is not a valid credit card number.',
+        '30' => 'Gateway timed out.'
       }
     end
   end

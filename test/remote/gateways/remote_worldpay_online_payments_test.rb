@@ -28,6 +28,20 @@ class RemoteWorldpayOnlinePaymentsTest < Test::Unit::TestCase
     assert_not_equal 'SUCCESS', response.message
   end
 
+  def test_failed_card_purchase
+    @options[:billing_address][:name] = 'FAILED'
+    response = @gateway.purchase(@amount, @credit_card, @options)
+    assert_failure response
+    assert_not_equal 'SUCCESS', response.message
+  end
+
+  def test_error_card_purchase
+    @options[:billing_address][:name] = 'ERROR'
+    response = @gateway.purchase(@amount, @credit_card, @options)
+    assert_failure response
+    assert_not_equal 'SUCCESS', response.message
+  end
+
   def test_successful_authorize_and_capture
     auth = @gateway.authorize(@amount, @credit_card, @options)
     assert_success auth
@@ -140,8 +154,8 @@ class RemoteWorldpayOnlinePaymentsTest < Test::Unit::TestCase
 
   def test_invalid_login
     badgateway = WorldpayOnlinePaymentsGateway.new(
-      client_key: "T_C_NOT_VALID",
-      service_key: "T_S_NOT_VALID"
+      client_key: 'T_C_NOT_VALID',
+      service_key: 'T_S_NOT_VALID'
     )
     response = badgateway.purchase(@amount, @credit_card, @options)
     assert_failure response

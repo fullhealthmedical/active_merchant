@@ -14,16 +14,16 @@ class WorldpayOnlinePaymentsTest < Test::Unit::TestCase
       description: 'Test Purchase'
     }
 
-    @token = "TEST_RU_8fcc4f2f-8c0d-483d-a0a3-eaad7356623e"
-    @intoken = "_TEST_RU_8fcc4f2f-8c0d-483d-a0a3-eaad7356623e_"
+    @token = 'TEST_RU_8fcc4f2f-8c0d-483d-a0a3-eaad7356623e'
+    @intoken = '_TEST_RU_8fcc4f2f-8c0d-483d-a0a3-eaad7356623e_'
 
-    @orderCode = "e69b5445-2a46-4f2c-b67d-7e1e95bd00a5"
-    @inorderCode = "_e69b5445-2a46-4f2c-b67d-7e1e95bd00a5_"
+    @orderCode = 'e69b5445-2a46-4f2c-b67d-7e1e95bd00a5'
+    @inorderCode = '_e69b5445-2a46-4f2c-b67d-7e1e95bd00a5_'
   end
 
   def test_successful_purchase
-    @gateway.expects(:ssl_request).returns(successful_token_response)
     @gateway.expects(:ssl_request).returns(successful_purchase_response)
+    @gateway.expects(:ssl_request).returns(successful_token_response)
     response = @gateway.purchase(@amount, @credit_card, @options)
     assert_success response
     assert_equal 'SUCCESS', response.message
@@ -37,8 +37,8 @@ class WorldpayOnlinePaymentsTest < Test::Unit::TestCase
   end
 
   def test_successful_authorize_and_capture
-    @gateway.expects(:ssl_request).returns(successful_token_response)
     @gateway.expects(:ssl_request).returns(successful_authorize_response)
+    @gateway.expects(:ssl_request).returns(successful_token_response)
     authorize = @gateway.authorize(@amount, @credit_card, @options)
     assert_success authorize
 
@@ -65,8 +65,8 @@ class WorldpayOnlinePaymentsTest < Test::Unit::TestCase
   end
 
   def test_partial_capture
-    @gateway.expects(:ssl_request).returns(successful_token_response)
     @gateway.expects(:ssl_request).returns(successful_authorize_response)
+    @gateway.expects(:ssl_request).returns(successful_token_response)
     authorize = @gateway.authorize(@amount, @credit_card, @options)
     assert_success authorize
 
@@ -82,8 +82,8 @@ class WorldpayOnlinePaymentsTest < Test::Unit::TestCase
   end
 
   def test_successful_refund
-    @gateway.expects(:ssl_request).returns(successful_token_response)
     @gateway.expects(:ssl_request).returns(successful_purchase_response)
+    @gateway.expects(:ssl_request).returns(successful_token_response)
     purchase = @gateway.purchase(@amount, @credit_card, @options)
     assert_success purchase
 
@@ -101,8 +101,8 @@ class WorldpayOnlinePaymentsTest < Test::Unit::TestCase
   end
 
   def test_failed_double_refund
-    @gateway.expects(:ssl_request).returns(successful_token_response)
     @gateway.expects(:ssl_request).returns(successful_purchase_response)
+    @gateway.expects(:ssl_request).returns(successful_token_response)
     purchase = @gateway.purchase(@amount, @credit_card, @options)
     assert_success purchase
 
@@ -116,8 +116,8 @@ class WorldpayOnlinePaymentsTest < Test::Unit::TestCase
   end
 
   def test_failed_partial_refund
-    @gateway.expects(:ssl_request).returns(successful_token_response)
     @gateway.expects(:ssl_request).returns(successful_purchase_response)
+    @gateway.expects(:ssl_request).returns(successful_token_response)
     purchase = @gateway.purchase(@amount, @credit_card, @options)
     assert_success purchase
 
@@ -127,8 +127,8 @@ class WorldpayOnlinePaymentsTest < Test::Unit::TestCase
   end
 
   def test_successful_void
-    @gateway.expects(:ssl_request).returns(successful_token_response)
     @gateway.expects(:ssl_request).returns(successful_authorize_response)
+    @gateway.expects(:ssl_request).returns(successful_token_response)
     authorize = @gateway.authorize(@amount, @credit_card, @options)
     assert_success authorize
 
@@ -138,8 +138,8 @@ class WorldpayOnlinePaymentsTest < Test::Unit::TestCase
   end
 
   def test_successful_order_void
-    @gateway.expects(:ssl_request).returns(successful_token_response)
     @gateway.expects(:ssl_request).returns(successful_purchase_response)
+    @gateway.expects(:ssl_request).returns(successful_token_response)
     purchase = @gateway.purchase(@amount, @credit_card, @options)
     assert_success purchase
 
@@ -155,8 +155,8 @@ class WorldpayOnlinePaymentsTest < Test::Unit::TestCase
   end
 
   def test_failed_double_void
-    @gateway.expects(:ssl_request).returns(successful_token_response)
     @gateway.expects(:ssl_request).returns(successful_authorize_response)
+    @gateway.expects(:ssl_request).returns(successful_token_response)
     authorize = @gateway.authorize(@amount, @credit_card, @options)
     assert_success authorize
 
@@ -170,8 +170,8 @@ class WorldpayOnlinePaymentsTest < Test::Unit::TestCase
   end
 
   def test_successful_verify
-    @gateway.expects(:ssl_request).returns(successful_token_response)
     @gateway.expects(:ssl_request).returns(successful_authorize_response)
+    @gateway.expects(:ssl_request).returns(successful_token_response)
     response = @gateway.verify(@credit_card, @options)
     assert_success response
   end
@@ -184,8 +184,8 @@ class WorldpayOnlinePaymentsTest < Test::Unit::TestCase
 
   def test_invalid_login
     badgateway = WorldpayOnlinePaymentsGateway.new(
-      client_key: "T_C_NOT_VALID",
-      service_key: "T_S_NOT_VALID"
+      client_key: 'T_C_NOT_VALID',
+      service_key: 'T_S_NOT_VALID'
     )
 
     badgateway.expects(:ssl_request).returns(failed_login_response)

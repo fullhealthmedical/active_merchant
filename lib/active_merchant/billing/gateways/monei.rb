@@ -14,7 +14,7 @@ module ActiveMerchant #:nodoc:
       self.test_url = 'https://test.monei-api.net/payment/ctpe'
       self.live_url = 'https://monei-api.net/payment/ctpe'
 
-      self.supported_countries = ['ES']
+      self.supported_countries = ['AD', 'AT', 'BE', 'BG', 'CA', 'CH', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FO', 'FR', 'GB', 'GI', 'GR', 'HU', 'IE', 'IL', 'IS', 'IT', 'LI', 'LT', 'LU', 'LV', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'TR', 'US', 'VA']
       self.default_currency = 'EUR'
       self.supported_cardtypes = [:visa, :master, :maestro, :jcb, :american_express]
 
@@ -45,7 +45,7 @@ module ActiveMerchant #:nodoc:
       #               :currency         Sale currency to override money object or default (optional)
       #
       # Returns Active Merchant response object
-      def purchase(money, credit_card, options)
+      def purchase(money, credit_card, options={})
         execute_new_order(:purchase, money, credit_card, options)
       end
 
@@ -138,7 +138,7 @@ module ActiveMerchant #:nodoc:
         commit(request)
       end
 
-      # Private: Execute operation that depends on athorization code from previous purchase or authorize operation
+      # Private: Execute operation that depends on authorization code from previous purchase or authorize operation
       def execute_dependant(action, money, authorization, options)
         request = build_request do |xml|
           add_identification_authorization(xml, authorization, options)
@@ -151,7 +151,7 @@ module ActiveMerchant #:nodoc:
       # Private: Build XML wrapping code yielding to code to fill the transaction information
       def build_request
         builder = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
-          xml.Request(:version => "1.0") do
+          xml.Request(:version => '1.0') do
             xml.Header { xml.Security(:sender => @options[:sender_id]) }
             xml.Transaction(:mode => test? ? 'CONNECTOR_TEST' : 'LIVE', :response => 'SYNC', :channel => @options[:channel_id]) do
               xml.User(:login => @options[:login], :pwd => @options[:pwd])
@@ -229,10 +229,10 @@ module ActiveMerchant #:nodoc:
       def parse(body)
         xml = Nokogiri::XML(body)
         {
-            :unique_id => xml.xpath("//Response/Transaction/Identification/UniqueID").text,
-            :status => translate_status_code(xml.xpath("//Response/Transaction/Processing/Status/@code").text),
-            :reason => translate_status_code(xml.xpath("//Response/Transaction/Processing/Reason/@code").text),
-            :message => xml.xpath("//Response/Transaction/Processing/Return").text
+            :unique_id => xml.xpath('//Response/Transaction/Identification/UniqueID').text,
+            :status => translate_status_code(xml.xpath('//Response/Transaction/Processing/Status/@code').text),
+            :reason => translate_status_code(xml.xpath('//Response/Transaction/Processing/Reason/@code').text),
+            :message => xml.xpath('//Response/Transaction/Processing/Return').text
         }
       end
 

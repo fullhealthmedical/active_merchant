@@ -50,7 +50,7 @@ module ActiveMerchant #:nodoc:
       # Viaklix does not support credits by reference. You must pass in the credit card
       def credit(money, creditcard, options = {})
         if creditcard.is_a?(String)
-          raise ArgumentError, "Reference credits are not supported. Please supply the original credit card"
+          raise ArgumentError, 'Reference credits are not supported. Please supply the original credit card'
         end
 
         form = {}
@@ -92,7 +92,7 @@ module ActiveMerchant #:nodoc:
         end
 
         if shipping_address = options[:shipping_address]
-          first_name, last_name = parse_first_and_last_name(shipping_address[:name])
+          first_name, last_name = split_names(shipping_address[:name])
           form[:ship_to_first_name]     = first_name.to_s.slice(0, 20)
           form[:ship_to_last_name]      = last_name.to_s.slice(0, 30)
           form[:ship_to_address]        = shipping_address[:address1].to_s.slice(0, 30)
@@ -102,14 +102,6 @@ module ActiveMerchant #:nodoc:
           form[:ship_to_country]        = shipping_address[:country].to_s.slice(0, 50)
           form[:ship_to_zip]            = shipping_address[:zip].to_s.slice(0, 10)
         end
-      end
-
-      def parse_first_and_last_name(value)
-        name = value.to_s.split(' ')
-
-        last_name = name.pop || ''
-        first_name = name.join(' ')
-        [ first_name, last_name ]
       end
 
       def add_creditcard(form, creditcard)
@@ -166,16 +158,16 @@ module ActiveMerchant #:nodoc:
       def post_data(parameters)
         result = preamble
         result.merge!(parameters)
-        result.collect { |key, value| "ssl_#{key}=#{CGI.escape(value.to_s)}" }.join("&")
+        result.collect { |key, value| "ssl_#{key}=#{CGI.escape(value.to_s)}" }.join('&')
       end
 
       # Parse the response message
       def parse(msg)
         resp = {}
         msg.split(self.delimiter).collect{|li|
-            key, value = li.split("=")
-            resp[key.strip.gsub(/^ssl_/, '')] = value.to_s.strip
-          }
+          key, value = li.split('=')
+          resp[key.strip.gsub(/^ssl_/, '')] = value.to_s.strip
+        }
         resp
       end
     end

@@ -26,12 +26,12 @@ class MerchantWareVersionFourTest < Test::Unit::TestCase
     assert_success response
 
     assert_equal '1236564', response.authorization
-    assert_equal "APPROVED", response.message
+    assert_equal 'APPROVED', response.message
     assert response.test?
   end
 
   def test_soap_fault_during_authorization
-    response_400 = stub(:code => "400", :message => "Bad Request", :body => failed_authorize_response)
+    response_400 = stub(:code => '400', :message => 'Bad Request', :body => failed_authorize_response)
     @gateway.expects(:ssl_post).raises(ActiveMerchant::ResponseError.new(response_400))
 
     assert response = @gateway.authorize(@amount, @credit_card, @options)
@@ -40,9 +40,9 @@ class MerchantWareVersionFourTest < Test::Unit::TestCase
     assert response.test?
 
     assert_nil response.authorization
-    assert_equal "amount cannot be null. Parameter name: amount", response.message
-    assert_equal response_400.code, response.params["http_code"]
-    assert_equal response_400.message, response.params["http_message"]
+    assert_equal 'amount cannot be null. Parameter name: amount', response.message
+    assert_equal response_400.code, response.params['http_code']
+    assert_equal response_400.message, response.params['http_message']
   end
 
   def test_failed_authorization
@@ -54,9 +54,9 @@ class MerchantWareVersionFourTest < Test::Unit::TestCase
     assert response.test?
 
     assert_nil response.authorization
-    assert_equal "invalid exp date", response.message
-    assert_equal "DECLINED", response.params["status"]
-    assert_equal "1024", response.params["failure_code"]
+    assert_equal 'invalid exp date', response.message
+    assert_equal 'DECLINED', response.params['status']
+    assert_equal '1024', response.params['failure_code']
   end
 
   def test_failed_authorization_due_to_invalid_credit_card_number
@@ -68,29 +68,29 @@ class MerchantWareVersionFourTest < Test::Unit::TestCase
     assert response.test?
 
     assert_nil response.authorization
-    assert_equal "Invalid card number.", response.message
-    assert_nil response.params["status"]
-    assert_nil response.params["failure_code"]
+    assert_equal 'Invalid card number.', response.message
+    assert_nil response.params['status']
+    assert_nil response.params['failure_code']
   end
 
   def test_refund
-    @gateway.expects(:ssl_post).with(anything, regexp_matches(/<token>transaction_id<\//), anything).returns("")
+    @gateway.expects(:ssl_post).with(anything, regexp_matches(/<token>transaction_id<\//), anything).returns('')
     @gateway.expects(:parse).returns({})
-    @gateway.refund(@amount, "transaction_id", @options)
+    @gateway.refund(@amount, 'transaction_id', @options)
   end
 
   def test_failed_void
     @gateway.expects(:ssl_post).returns(failed_void_response)
 
-    assert response = @gateway.void("1")
+    assert response = @gateway.void('1')
     assert_instance_of Response, response
     assert_failure response
     assert response.test?
 
     assert_nil response.authorization
-    assert_equal "original transaction id not found", response.message
-    assert_equal "DECLINED", response.params["status"]
-    assert_equal "1019", response.params["failure_code"]
+    assert_equal 'original transaction id not found', response.message
+    assert_equal 'DECLINED', response.params['status']
+    assert_equal '1019', response.params['failure_code']
   end
 
   def test_avs_result
@@ -115,7 +115,7 @@ class MerchantWareVersionFourTest < Test::Unit::TestCase
     assert_success response
 
     assert_equal '1236564', response.authorization
-    assert_equal "APPROVED", response.message
+    assert_equal 'APPROVED', response.message
     assert response.test?
   end
 
@@ -257,8 +257,8 @@ class MerchantWareVersionFourTest < Test::Unit::TestCase
 <?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <soap:Body>
-    <VoidPreAuthorizationResponse xmlns="http://schemas.merchantwarehouse.com/merchantware/40/Credit/">
-      <VoidPreAuthorizationResult>
+    <VoidResponse xmlns="http://schemas.merchantwarehouse.com/merchantware/40/Credit/">
+      <VoidResult>
         <Amount />
         <ApprovalStatus>APPROVED</ApprovalStatus>
         <AuthorizationCode>VOID</AuthorizationCode>
@@ -274,8 +274,8 @@ class MerchantWareVersionFourTest < Test::Unit::TestCase
         <Token>266783537</Token>
         <TransactionDate>7/9/2015 3:13:51 PM</TransactionDate>
         <TransactionType>3</TransactionType>
-      </VoidPreAuthorizationResult>
-    </VoidPreAuthorizationResponse>
+      </VoidResult>
+    </VoidResponse>
   </soap:Body>
 </soap:Envelope>
     XML
@@ -285,8 +285,8 @@ class MerchantWareVersionFourTest < Test::Unit::TestCase
     <<-XML
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <soap:Body>
-    <VoidPreAuthorizationResponse xmlns="http://schemas.merchantwarehouse.com/merchantware/40/Credit/">
-      <VoidPreAuthorizationResult>
+    <VoidResponse xmlns="http://schemas.merchantwarehouse.com/merchantware/40/Credit/">
+      <VoidResult>
         <Amount />
         <ApprovalStatus>DECLINED;1019;original transaction id not found</ApprovalStatus>
         <AuthorizationCode />
@@ -302,8 +302,8 @@ class MerchantWareVersionFourTest < Test::Unit::TestCase
         <Token />
         <TransactionDate>5/15/2013 9:37:04 AM</TransactionDate>
         <TransactionType>3</TransactionType>
-      </VoidPreAuthorizationResult>
-    </VoidPreAuthorizationResponse>
+      </VoidResult>
+    </VoidResponse>
   </soap:Body>
 </soap:Envelope>
     XML

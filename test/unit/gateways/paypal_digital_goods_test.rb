@@ -13,21 +13,21 @@ class PaypalDigitalGoodsTest < Test::Unit::TestCase
       :pem => 'PEM'
     )
 
-    Base.gateway_mode = :test
+    Base.mode = :test
   end
 
   def teardown
-    Base.gateway_mode = :test
+    Base.mode = :test
   end
 
   def test_live_redirect_url
-    Base.gateway_mode = :production
+    Base.mode = :production
     assert_equal LIVE_REDIRECT_URL, @gateway.redirect_url_for('1234567890')
     assert_equal MOBILE_LIVE_REDIRECT_URL, @gateway.redirect_url_for('1234567890', mobile: true)
   end
 
   def test_test_redirect_url
-    assert_equal :test, Base.gateway_mode
+    assert_equal :test, Base.mode
     assert_equal TEST_REDIRECT_URL, @gateway.redirect_url_for('1234567890')
     assert_equal MOBILE_TEST_REDIRECT_URL, @gateway.redirect_url_for('1234567890', mobile: true)
   end
@@ -35,42 +35,42 @@ class PaypalDigitalGoodsTest < Test::Unit::TestCase
   def test_setup_request_invalid_requests
    assert_raise ArgumentError do
     @gateway.setup_purchase(100,
-      :ip                => "127.0.0.1",
-      :description       => "Test Title",
-      :return_url        => "http://return.url",
-      :cancel_return_url => "http://cancel.url")
+      :ip                => '127.0.0.1',
+      :description       => 'Test Title',
+      :return_url        => 'http://return.url',
+      :cancel_return_url => 'http://cancel.url')
    end
 
    assert_raise ArgumentError do
     @gateway.setup_purchase(100,
-      :ip                => "127.0.0.1",
-      :description       => "Test Title",
-      :return_url        => "http://return.url",
-      :cancel_return_url => "http://cancel.url",
+      :ip                => '127.0.0.1',
+      :description       => 'Test Title',
+      :return_url        => 'http://return.url',
+      :cancel_return_url => 'http://cancel.url',
       :items             => [ ])
    end
 
    assert_raise ArgumentError do
     @gateway.setup_purchase(100,
-      :ip                => "127.0.0.1",
-      :description       => "Test Title",
-      :return_url        => "http://return.url",
-      :cancel_return_url => "http://cancel.url",
+      :ip                => '127.0.0.1',
+      :description       => 'Test Title',
+      :return_url        => 'http://return.url',
+      :cancel_return_url => 'http://cancel.url',
       :items             => [ Hash.new ] )
    end
 
    assert_raise ArgumentError do
     @gateway.setup_purchase(100,
-      :ip                => "127.0.0.1",
-      :description       => "Test Title",
-      :return_url        => "http://return.url",
-      :cancel_return_url => "http://cancel.url",
-      :items             => [ { :name => "Charge",
-                                :number => "1",
-                                :quantity => "1",
+      :ip                => '127.0.0.1',
+      :description       => 'Test Title',
+      :return_url        => 'http://return.url',
+      :cancel_return_url => 'http://cancel.url',
+      :items             => [ { :name => 'Charge',
+                                :number => '1',
+                                :quantity => '1',
                                 :amount   => 100,
-                                :description => "Description",
-                                :category => "Physical" } ] )
+                                :description => 'Description',
+                                :category => 'Physical' } ] )
    end
   end
 
@@ -79,16 +79,16 @@ class PaypalDigitalGoodsTest < Test::Unit::TestCase
     @gateway.expects(:ssl_post).returns(successful_setup_response)
 
     @gateway.setup_purchase(100,
-      :ip                => "127.0.0.1",
-      :description       => "Test Title",
-      :return_url        => "http://return.url",
-      :cancel_return_url => "http://cancel.url",
-      :items             => [ { :name => "Charge",
-                                :number => "1",
-                                :quantity => "1",
+      :ip                => '127.0.0.1',
+      :description       => 'Test Title',
+      :return_url        => 'http://return.url',
+      :cancel_return_url => 'http://cancel.url',
+      :items             => [ { :name => 'Charge',
+                                :number => '1',
+                                :quantity => '1',
                                 :amount   => 100,
-                                :description => "Description",
-                                :category => "Digital" } ] )
+                                :description => 'Description',
+                                :category => 'Digital' } ] )
 
   end
 

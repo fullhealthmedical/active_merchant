@@ -47,19 +47,18 @@ class RemoteAuthorizeNetApplePayTest < Test::Unit::TestCase
   end
 
   def test_failed_apple_pay_authorization
-    response = @gateway.authorize(@amount, apple_pay_payment_token(payment_data: {data: 'garbage'}), @options)
+    response = @gateway.authorize(@amount, apple_pay_payment_token(payment_data: { data: 'garbage' }), @options)
     assert_failure response
     assert_equal 'There was an error processing the payment data', response.message
     assert_equal 'processing_error', response.error_code
   end
 
   def test_failed_apple_pay_purchase
-    response = @gateway.purchase(@amount, apple_pay_payment_token(payment_data: {data: 'garbage'}), @options)
+    response = @gateway.purchase(@amount, apple_pay_payment_token(payment_data: { data: 'garbage' }), @options)
     assert_failure response
     assert_equal 'There was an error processing the payment data', response.message
     assert_equal 'processing_error', response.error_code
   end
-
 
   private
 
@@ -86,8 +85,6 @@ class RemoteAuthorizeNetApplePayTest < Test::Unit::TestCase
     ActiveMerchant::Billing::ApplePayPaymentToken.new(defaults[:payment_data],
       payment_instrument_name: defaults[:payment_instrument_name],
       payment_network: defaults[:payment_network],
-      transaction_identifier: defaults[:transaction_identifier]
-    )
+      transaction_identifier: defaults[:transaction_identifier])
   end
-
 end

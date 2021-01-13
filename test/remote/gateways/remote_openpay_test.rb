@@ -48,7 +48,7 @@ class RemoteOpenpayTest < Test::Unit::TestCase
   end
 
   def test_unsuccessful_refund
-    assert response = @gateway.refund(@amount, '1',  @options)
+    assert response = @gateway.refund(@amount, '1', @options)
     assert_failure response
     assert_not_nil response.message
   end
@@ -165,7 +165,7 @@ class RemoteOpenpayTest < Test::Unit::TestCase
   def test_unsuccessful_verify
     response = @gateway.verify(@declined_card, @options)
     assert_failure response
-    assert_match /The card was declined/, response.message
+    assert_match(/The card was declined/, response.message)
   end
 
   def test_invalid_login

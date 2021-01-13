@@ -8,17 +8,17 @@ module ActiveMerchant #:nodoc:
       self.supported_countries = ['US']
       self.default_currency = 'USD'
       self.money_format = :dollars
-      self.supported_cardtypes = [:visa, :master, :american_express, :discover]
+      self.supported_cardtypes = %i[visa master american_express discover]
 
       self.homepage_url = 'http://1stpaygateway.net/'
       self.display_name = '1stPayGateway.Net'
 
-      def initialize(options={})
+      def initialize(options = {})
         requires!(options, :transaction_center_id, :gateway_id)
         super
       end
 
-      def purchase(money, payment, options={})
+      def purchase(money, payment, options = {})
         post = {}
         add_invoice(post, money, options)
         add_payment(post, payment, options)
@@ -28,7 +28,7 @@ module ActiveMerchant #:nodoc:
         commit('sale', post)
       end
 
-      def authorize(money, payment, options={})
+      def authorize(money, payment, options = {})
         post = {}
         add_invoice(post, money, options)
         add_payment(post, payment, options)
@@ -38,22 +38,33 @@ module ActiveMerchant #:nodoc:
         commit('auth', post)
       end
 
-      def capture(money, authorization, options={})
+      def capture(money, authorization, options = {})
         post = {}
         add_reference(post, 'settle', money, authorization)
         commit('settle', post)
       end
 
-      def refund(money, authorization, options={})
+      def refund(money, authorization, options = {})
         post = {}
         add_reference(post, 'credit', money, authorization)
         commit('credit', post)
       end
 
-      def void(authorization, options={})
+      def void(authorization, options = {})
         post = {}
         add_reference(post, 'void', nil, authorization)
         commit('void', post)
+      end
+
+      def supports_scrubbing?
+        true
+      end
+
+      def scrub(transcript)
+        transcript.
+          gsub(%r((gateway_id)[^<]*(</FIELD>))i, '\1[FILTERED]\2').
+          gsub(%r((card_number)[^<]*(</FIELD>))i, '\1[FILTERED]\2').
+          gsub(%r((cvv2)[^<]*(</FIELD>))i, '\1[FILTERED]\2')
       end
 
       private
@@ -108,9 +119,9 @@ module ActiveMerchant #:nodoc:
         response = {}
 
         doc = Nokogiri::XML(xml)
-        doc.root.xpath('//RESPONSE/FIELDS/FIELD').each do |field|
+        doc.root&.xpath('//RESPONSE/FIELDS/FIELD')&.each do |field|
           response[field['KEY']] = field.text
-        end unless doc.root.nil?
+        end
 
         response
       end
@@ -123,6 +134,7 @@ module ActiveMerchant #:nodoc:
           message_from(response),
           response,
           authorization: authorization_from(response),
+          error_code: error_code_from(response),
           test: test?
         )
       end
@@ -137,7 +149,11 @@ module ActiveMerchant #:nodoc:
       def message_from(response)
         # Silly inconsistent gateway. Always make capitalized (but not all caps)
         msg = (response['auth_response'] || response['response1'])
-        msg.downcase.capitalize if msg
+        msg&.downcase&.capitalize
+      end
+
+      def error_code_from(response)
+        response['error']
       end
 
       def authorization_from(response)

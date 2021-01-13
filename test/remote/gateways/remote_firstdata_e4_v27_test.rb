@@ -4,13 +4,14 @@ class RemoteFirstdataE4V27Test < Test::Unit::TestCase
   def setup
     @gateway = FirstdataE4V27Gateway.new(fixtures(:firstdata_e4_v27))
     @credit_card = credit_card
+    @credit_card_master = credit_card('5500000000000004', brand: 'master')
     @bad_credit_card = credit_card('4111111111111113')
     @credit_card_with_track_data = credit_card_with_track_data('4003000123456781')
     @amount = 100
     @options = {
-      :order_id => '1',
-      :billing_address => address,
-      :description => 'Store Purchase'
+      order_id: '1',
+      billing_address: address,
+      description: 'Store Purchase'
     }
     @options_with_authentication_data = @options.merge({
       eci: '5',
@@ -28,8 +29,7 @@ class RemoteFirstdataE4V27Test < Test::Unit::TestCase
   def test_successful_purchase_with_network_tokenization
     @credit_card = network_tokenization_credit_card('4242424242424242',
       payment_cryptogram: 'BwABB4JRdgAAAAAAiFF2AAAAAAA=',
-      verification_value: nil
-    )
+      verification_value: nil)
     assert response = @gateway.purchase(@amount, @credit_card, @options)
     assert_success response
     assert_equal 'Transaction Normal - Approved', response.message
@@ -78,10 +78,59 @@ class RemoteFirstdataE4V27Test < Test::Unit::TestCase
     assert_success response
   end
 
+  def test_successful_purchase_with_stored_credentials_initial
+    stored_credential = {
+      stored_credential: {
+        initial_transaction: true,
+        reason_type: 'unscheduled',
+        initiator: 'customer'
+      }
+    }
+    assert response = @gateway.purchase(@amount, @credit_card, @options.merge(stored_credential))
+    assert_match(/Transaction Normal/, response.message)
+    assert_success response
+    assert_equal '1', response.params['stored_credentials_indicator']
+    assert_equal 'C', response.params['stored_credentials_initiation']
+    assert_equal 'U', response.params['stored_credentials_schedule']
+    assert_not_nil response.params['stored_credentials_transaction_id']
+  end
+
+  def test_successful_purchase_with_stored_credentials_initial_master
+    stored_credential = {
+      stored_credential: {
+        initial_transaction: true,
+        reason_type: 'unscheduled',
+        initiator: 'customer'
+      }
+    }
+    assert response = @gateway.purchase(@amount, @credit_card_master, @options.merge(stored_credential))
+    assert_match(/Transaction Normal/, response.message)
+    assert_success response
+    assert_equal 'S', response.params['stored_credentials_indicator']
+    assert_equal 'U', response.params['stored_credentials_schedule']
+    assert_not_nil response.params['stored_credentials_transaction_id']
+  end
+
+  def test_successful_purchase_with_stored_credentials_subsequent_recurring
+    stored_credential = {
+      stored_credential: {
+        initial_transaction: false,
+        reason_type: 'recurring',
+        initiator: 'merchant'
+      }
+    }
+    assert response = @gateway.purchase(@amount, @credit_card, @options.merge(stored_credential))
+    assert_match(/Transaction Normal/, response.message)
+    assert_success response
+    assert_equal 'S', response.params['stored_credentials_indicator']
+    assert_equal 'S', response.params['stored_credentials_schedule']
+    assert_not_nil response.params['stored_credentials_transaction_id']
+  end
+
   def test_unsuccessful_purchase
     # ask for error 13 response (Amount Error) via dollar amount 5,000 + error
     @amount = 501300
-    assert response = @gateway.purchase(@amount, @credit_card, @options )
+    assert response = @gateway.purchase(@amount, @credit_card, @options)
     assert_match(/Transaction Normal/, response.message)
     assert_failure response
   end
@@ -96,7 +145,7 @@ class RemoteFirstdataE4V27Test < Test::Unit::TestCase
   def test_trans_error
     # ask for error 42 (unable to send trans) as the cents bit...
     @amount = 500042
-    assert response = @gateway.purchase(@amount, @credit_card, @options )
+    assert response = @gateway.purchase(@amount, @credit_card, @options)
     assert_match(/Unable to Send Transaction/, response.message) # 42 is 'unable to send trans'
     assert_failure response
     assert_equal response.error_code, 'processing_error'
@@ -159,10 +208,10 @@ class RemoteFirstdataE4V27Test < Test::Unit::TestCase
   end
 
   def test_invalid_login
-    gateway = FirstdataE4V27Gateway.new(:login    => 'NotARealUser',
-                                     :password => 'NotARealPassword',
-                                     :key_id   => 'NotARealKey',
-                                     :hmac_key => 'NotARealHMAC' )
+    gateway = FirstdataE4V27Gateway.new(login: 'NotARealUser',
+                                        password: 'NotARealPassword',
+                                        key_id: 'NotARealKey',
+                                        hmac_key: 'NotARealHMAC')
     assert response = gateway.purchase(@amount, @credit_card, @options)
     assert_match %r{Unauthorized Request}, response.message
     assert_failure response
@@ -218,5 +267,4 @@ class RemoteFirstdataE4V27Test < Test::Unit::TestCase
     assert_scrubbed(@gateway.options[:password], transcript)
     assert_scrubbed(@gateway.options[:hmac_key], transcript)
   end
-
 end

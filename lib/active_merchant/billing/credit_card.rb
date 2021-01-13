@@ -15,12 +15,16 @@ module ActiveMerchant #:nodoc:
     # * American Express
     # * Diner's Club
     # * JCB
-    # * Switch
-    # * Solo
     # * Dankort
     # * Maestro
     # * Forbrugsforeningen
-    # * Laser
+    # * Elo
+    # * Alelo
+    # * Cabal
+    # * Naranja
+    # * UnionPay
+    # * Alia
+    # * Olimpica
     #
     # For testing purposes, use the 'bogus' credit card brand. This skips the vast majority of
     # validations, allowing you to focus on your core concerns until you're ready to be more concerned
@@ -88,12 +92,16 @@ module ActiveMerchant #:nodoc:
       # * +'american_express'+
       # * +'diners_club'+
       # * +'jcb'+
-      # * +'switch'+
-      # * +'solo'+
       # * +'dankort'+
       # * +'maestro'+
       # * +'forbrugsforeningen'+
-      # * +'laser'+
+      # * +'elo'+
+      # * +'alelo'+
+      # * +'cabal'+
+      # * +'naranja'+
+      # * +'union_pay'+
+      # * +'alia'+
+      # * +'olimpica'+
       #
       # Or, if you wish to test your implementation, +'bogus'+.
       #
@@ -120,10 +128,6 @@ module ActiveMerchant #:nodoc:
       #
       # @return [String]
       attr_accessor :last_name
-
-      # Required for Switch / Solo cards
-      attr_reader :start_month, :start_year
-      attr_accessor :issue_number
 
       # Returns or sets the card verification value.
       #
@@ -188,7 +192,7 @@ module ActiveMerchant #:nodoc:
         'contactless' => 'Data was read by a Contactless EMV kernel. Issuer script results are not available.',
         'contactless_magstripe' => 'Contactless data was read with a non-EMV protocol.',
         'contact' => 'Data was read using the EMV protocol. Issuer script results may follow.',
-        'contact_quickchip' => 'Data was read by the Quickchip EMV kernel. Issuer script results are not available.',
+        'contact_quickchip' => 'Data was read by the Quickchip EMV kernel. Issuer script results are not available.'
       }
 
       # Returns the ciphertext of the card's encrypted PIN.
@@ -303,8 +307,7 @@ module ActiveMerchant #:nodoc:
 
         errors_hash(
           errors +
-          validate_card_brand_and_number +
-          validate_switch_or_solo_attributes
+          validate_card_brand_and_number
         )
       end
 
@@ -330,7 +333,7 @@ module ActiveMerchant #:nodoc:
           errors << [:last_name,  'cannot be empty'] if last_name.blank?
         end
 
-        if(empty?(month) || empty?(year))
+        if empty?(month) || empty?(year)
           errors << [:month, 'is required'] if empty?(month)
           errors << [:year,  'is required'] if empty?(year)
         else
@@ -339,7 +342,7 @@ module ActiveMerchant #:nodoc:
           if expired?
             errors << [:year,  'expired']
           else
-            errors << [:year,  'is not a valid year']  if !valid_expiry_year?(year)
+            errors << [:year,  'is not a valid year'] if !valid_expiry_year?(year)
           end
         end
 
@@ -350,7 +353,7 @@ module ActiveMerchant #:nodoc:
         errors = []
 
         if !empty?(brand)
-          errors << [:brand, 'is invalid']  if !CreditCard.card_companies.keys.include?(brand)
+          errors << [:brand, 'is invalid'] if !CreditCard.card_companies.include?(brand)
         end
 
         if empty?(number)
@@ -370,33 +373,10 @@ module ActiveMerchant #:nodoc:
         errors = []
 
         if verification_value?
-          unless valid_card_verification_value?(verification_value, brand)
-            errors << [:verification_value, "should be #{card_verification_value_length(brand)} digits"]
-          end
-        elsif requires_verification_value?
+          errors << [:verification_value, "should be #{card_verification_value_length(brand)} digits"] unless valid_card_verification_value?(verification_value, brand)
+        elsif requires_verification_value? && !valid_card_verification_value?(verification_value, brand)
           errors << [:verification_value, 'is required']
         end
-        errors
-      end
-
-      def validate_switch_or_solo_attributes #:nodoc:
-        errors = []
-
-        if %w[switch solo].include?(brand)
-          valid_start_month = valid_month?(start_month)
-          valid_start_year = valid_start_year?(start_year)
-
-          if((!valid_start_month || !valid_start_year) && !valid_issue_number?(issue_number))
-            if empty?(issue_number)
-              errors << [:issue_number, 'cannot be empty']
-              errors << [:start_month, 'is invalid'] if !valid_start_month
-              errors << [:start_year,  'is invalid'] if !valid_start_year
-            else
-              errors << [:issue_number, 'is invalid'] if !valid_issue_number?(issue_number)
-            end
-          end
-        end
-
         errors
       end
 
@@ -412,16 +392,15 @@ module ActiveMerchant #:nodoc:
         end
 
         def expiration #:nodoc:
-          begin
-            Time.utc(year, month, month_days, 23, 59, 59)
-          rescue ArgumentError
-            Time.at(0).utc
-          end
+          Time.utc(year, month, month_days, 23, 59, 59)
+        rescue ArgumentError
+          Time.at(0).utc
         end
 
         private
+
         def month_days
-          mdays = [nil,31,28,31,30,31,30,31,31,30,31,30,31]
+          mdays = [nil, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
           mdays[2] = 29 if Date.leap?(year)
           mdays[month]
         end

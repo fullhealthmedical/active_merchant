@@ -2,7 +2,6 @@ require 'rexml/document'
 
 module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
-
     # In NZ DPS supports ANZ, Westpac, National Bank, ASB and BNZ.
     # In Australia DPS supports ANZ, NAB, Westpac, CBA, St George and Bank of South Australia.
     # The Maybank in Malaysia is supported and the Citibank for Singapore.
@@ -14,12 +13,12 @@ module ActiveMerchant #:nodoc:
       # VISA, Mastercard, Diners Club and Farmers cards are supported
       #
       # However, regular accounts with DPS only support VISA and Mastercard
-      self.supported_cardtypes = [ :visa, :master, :american_express, :diners_club, :jcb ]
+      self.supported_cardtypes = %i[visa master american_express diners_club jcb]
 
-      self.supported_countries = %w[ AU FJ GB HK IE MY NZ PG SG US ]
+      self.supported_countries = %w[AU FJ GB HK IE MY NZ PG SG US]
 
-      self.homepage_url = 'http://www.paymentexpress.com/'
-      self.display_name = 'PaymentExpress'
+      self.homepage_url = 'https://www.windcave.com/'
+      self.display_name = 'Windcave (formerly PaymentExpress)'
 
       self.live_url = 'https://sec.paymentexpress.com/pxpost.aspx'
       self.test_url = 'https://uat.paymentexpress.com/pxpost.aspx'
@@ -27,11 +26,11 @@ module ActiveMerchant #:nodoc:
       APPROVED = '1'
 
       TRANSACTIONS = {
-        :purchase       => 'Purchase',
-        :credit         => 'Refund',
-        :authorization  => 'Auth',
-        :capture        => 'Complete',
-        :validate       => 'Validate'
+        purchase: 'Purchase',
+        credit: 'Refund',
+        authorization: 'Auth',
+        capture: 'Complete',
+        validate: 'Validate'
       }
 
       # We require the DPS gateway username and password when the object is created.
@@ -119,7 +118,7 @@ module ActiveMerchant #:nodoc:
       #
       # Note, once stored, PaymentExpress does not support unstoring a stored card.
       def store(credit_card, options = {})
-        request  = build_token_request(credit_card, options)
+        request = build_token_request(credit_card, options)
         commit(:validate, request)
       end
 
@@ -154,6 +153,7 @@ module ActiveMerchant #:nodoc:
         add_invoice(result, options)
         add_address_verification_data(result, options)
         add_optional_elements(result, options)
+        add_ip(result, options)
         result
       end
 
@@ -164,15 +164,17 @@ module ActiveMerchant #:nodoc:
         add_invoice(result, options)
         add_reference(result, identification)
         add_optional_elements(result, options)
+        add_ip(result, options)
         result
       end
 
       def build_token_request(credit_card, options)
         result = new_transaction
         add_credit_card(result, credit_card)
-        add_amount(result, 100, options) #need to make an auth request for $1
+        add_amount(result, 100, options) # need to make an auth request for $1
         add_token_request(result, options)
         add_optional_elements(result, options)
+        add_ip(result, options)
         result
       end
 
@@ -193,11 +195,6 @@ module ActiveMerchant #:nodoc:
         if credit_card.verification_value?
           xml.add_element('Cvc2').text = credit_card.verification_value
           xml.add_element('Cvc2Presence').text = '1'
-        end
-
-        if requires_start_date_or_issue_number?(credit_card)
-          xml.add_element('DateStart').text = format_date(credit_card.start_month, credit_card.start_year) unless credit_card.start_month.blank? || credit_card.start_year.blank?
-          xml.add_element('IssueNumber').text = credit_card.issue_number unless credit_card.issue_number.blank?
         end
       end
 
@@ -237,6 +234,10 @@ module ActiveMerchant #:nodoc:
 
         xml.add_element('AvsStreetAddress').text = address[:address1]
         xml.add_element('AvsPostCode').text = address[:zip]
+      end
+
+      def add_ip(xml, options)
+        xml.add_element('ClientInfo').text = options[:ip] if options[:ip]
       end
 
       # The options hash may contain optional data which will be passed
@@ -280,9 +281,9 @@ module ActiveMerchant #:nodoc:
           xml.add_element('ClientType').text = client_type
         end
 
-        xml.add_element('TxnData1').text = options[:txn_data1].to_s.slice(0,255) unless options[:txn_data1].blank?
-        xml.add_element('TxnData2').text = options[:txn_data2].to_s.slice(0,255) unless options[:txn_data2].blank?
-        xml.add_element('TxnData3').text = options[:txn_data3].to_s.slice(0,255) unless options[:txn_data3].blank?
+        xml.add_element('TxnData1').text = options[:txn_data1].to_s.slice(0, 255) unless options[:txn_data1].blank?
+        xml.add_element('TxnData2').text = options[:txn_data2].to_s.slice(0, 255) unless options[:txn_data2].blank?
+        xml.add_element('TxnData3').text = options[:txn_data3].to_s.slice(0, 255) unless options[:txn_data3].blank?
       end
 
       def new_transaction
@@ -301,9 +302,8 @@ module ActiveMerchant #:nodoc:
 
         # Return a response
         PaymentExpressResponse.new(response[:success] == APPROVED, message_from(response), response,
-          :test => response[:test_mode] == '1',
-          :authorization => authorization_from(action, response)
-        )
+          test: response[:test_mode] == '1',
+          authorization: authorization_from(action, response))
       end
 
       # Response XML documentation: http://www.paymentexpress.com/technical_resources/ecommerce_nonhosted/pxpost.html#XMLTxnOutput
@@ -346,13 +346,13 @@ module ActiveMerchant #:nodoc:
 
       def normalized_client_type(client_type_from_options)
         case client_type_from_options.to_s.downcase
-          when 'web'        then 'Web'
-          when 'ivr'        then 'IVR'
-          when 'moto'       then 'MOTO'
-          when 'unattended' then 'Unattended'
-          when 'internet'   then 'Internet'
-          when 'recurring'  then 'Recurring'
-          else nil
+        when 'web'        then 'Web'
+        when 'ivr'        then 'IVR'
+        when 'moto'       then 'MOTO'
+        when 'unattended' then 'Unattended'
+        when 'internet'   then 'Internet'
+        when 'recurring'  then 'Recurring'
+        else nil
         end
       end
     end

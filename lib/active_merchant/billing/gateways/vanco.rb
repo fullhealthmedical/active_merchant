@@ -10,24 +10,24 @@ module ActiveMerchant
 
       self.supported_countries = ['US']
       self.default_currency = 'USD'
-      self.supported_cardtypes = [:visa, :master, :american_express, :discover]
+      self.supported_cardtypes = %i[visa master american_express discover]
 
       self.homepage_url = 'http://vancopayments.com/'
       self.display_name = 'Vanco Payment Solutions'
 
-      def initialize(options={})
+      def initialize(options = {})
         requires!(options, :user_id, :password, :client_id)
         super
       end
 
-      def purchase(money, payment_method, options={})
+      def purchase(money, payment_method, options = {})
         MultiResponse.run do |r|
           r.process { login }
           r.process { commit(purchase_request(money, payment_method, r.params['response_sessionid'], options), :response_transactionref) }
         end
       end
 
-      def refund(money, authorization, options={})
+      def refund(money, authorization, options = {})
         MultiResponse.run do |r|
           r.process { login }
           r.process { commit(refund_request(money, authorization, r.params['response_sessionid']), :response_creditrequestreceived) }
@@ -52,7 +52,7 @@ module ActiveMerchant
 
         doc = Nokogiri::XML(xml)
         doc.root.xpath('*').each do |node|
-          if (node.elements.empty?)
+          if node.elements.empty?
             response[node.name.downcase.to_sym] = node.text
           else
             node.elements.each do |childnode|
@@ -82,8 +82,8 @@ module ActiveMerchant
           response[:error_message] = error['ErrorDescription']
           response[:error_codes] = error['ErrorCode']
         elsif error.kind_of?(Array)
-          error_str = error.map { |e| e['ErrorDescription']}.join('. ')
-          error_codes = error.map { |e| e['ErrorCode']}.join(', ')
+          error_str = error.map { |e| e['ErrorDescription'] }.join('. ')
+          error_codes = error.map { |e| e['ErrorCode'] }.join(', ')
           response[:error_message] = "#{error_str}."
           response[:error_codes] = error_codes
         end
@@ -108,6 +108,7 @@ module ActiveMerchant
 
       def message_from(succeeded, response)
         return 'Success' if succeeded
+
         response[:error_message]
       end
 
@@ -288,7 +289,6 @@ module ActiveMerchant
           'Content-Type' => 'text/xml'
         }
       end
-
     end
   end
 end

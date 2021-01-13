@@ -7,9 +7,9 @@ module ActiveMerchant #:nodoc:
       self.test_url = 'https://ccapi-stg.paymentez.com/v2/'
       self.live_url = 'https://ccapi.paymentez.com/v2/'
 
-      self.supported_countries = %w[MX EC VE CO BR CL]
+      self.supported_countries = %w[MX EC CO BR CL PE]
       self.default_currency = 'USD'
-      self.supported_cardtypes = %i[visa master american_express diners_club]
+      self.supported_cardtypes = %i[visa master american_express diners_club elo alia olimpica]
 
       self.homepage_url = 'https://secure.paymentez.com/'
       self.display_name = 'Paymentez'
@@ -38,7 +38,8 @@ module ActiveMerchant #:nodoc:
         'visa' => 'vi',
         'master' => 'mc',
         'american_express' => 'ax',
-        'diners_club' => 'di'
+        'diners_club' => 'di',
+        'elo' => 'el'
       }.freeze
 
       def initialize(options = {})
@@ -52,6 +53,7 @@ module ActiveMerchant #:nodoc:
         add_invoice(post, money, options)
         add_payment(post, payment)
         add_customer_data(post, options)
+        add_extra_params(post, options)
         action = payment.is_a?(String) ? 'debit' : 'debit_cc'
 
         commit_transaction(action, post)
@@ -63,21 +65,25 @@ module ActiveMerchant #:nodoc:
         add_invoice(post, money, options)
         add_payment(post, payment)
         add_customer_data(post, options)
+        add_extra_params(post, options)
 
         commit_transaction('authorize', post)
       end
 
       def capture(money, authorization, _options = {})
         post = {
-            transaction: { id: authorization }
+          transaction: { id: authorization }
         }
-        post[:order] = {amount: amount(money).to_f} if money
+        post[:order] = { amount: amount(money).to_f } if money
 
         commit_transaction('capture', post)
       end
 
-      def refund(_money, authorization, options = {})
-        void(authorization, options)
+      def refund(money, authorization, options = {})
+        post = { transaction: { id: authorization } }
+        post[:order] = { amount: amount(money).to_f } if money
+
+        commit_transaction('refund', post)
       end
 
       def void(authorization, _options = {})
@@ -107,7 +113,7 @@ module ActiveMerchant #:nodoc:
       end
 
       def unstore(identification, options = {})
-        post = { card: { token: identification }, user: { id: options[:user_id] }}
+        post = { card: { token: identification }, user: { id: options[:user_id] } }
         commit_card('delete', post)
       end
 
@@ -116,10 +122,10 @@ module ActiveMerchant #:nodoc:
       end
 
       def scrub(transcript)
-        transcript
-          .gsub(%r{(\\?"number\\?":)(\\?"[^"]+\\?")}, '\1[FILTERED]')
-          .gsub(%r{(\\?"cvc\\?":)(\\?"[^"]+\\?")}, '\1[FILTERED]')
-          .gsub(%r{(Auth-Token: )([A-Za-z0-9=]+)}, '\1[FILTERED]')
+        transcript.
+          gsub(%r{(\\?"number\\?":)(\\?"[^"]+\\?")}, '\1[FILTERED]').
+          gsub(%r{(\\?"cvc\\?":)(\\?"[^"]+\\?")}, '\1[FILTERED]').
+          gsub(%r{(Auth-Token: )([A-Za-z0-9=]+)}, '\1[FILTERED]')
       end
 
       private
@@ -131,6 +137,9 @@ module ActiveMerchant #:nodoc:
         post[:user][:email] = options[:email]
         post[:user][:ip_address] = options[:ip] if options[:ip]
         post[:user][:fiscal_number] = options[:fiscal_number] if options[:fiscal_number]
+        if phone = options[:phone] || options.dig(:billing_address, :phone)
+          post[:user][:phone] = phone
+        end
       end
 
       def add_invoice(post, money, options)
@@ -162,6 +171,33 @@ module ActiveMerchant #:nodoc:
         end
       end
 
+      def add_extra_params(post, options)
+        extra_params = {}
+        extra_params.merge!(options[:extra_params]) if options[:extra_params]
+
+        add_external_mpi_fields(extra_params, options)
+
+        post['extra_params'] = extra_params unless extra_params.empty?
+      end
+
+      def add_external_mpi_fields(extra_params, options)
+        three_d_secure_options = options[:three_d_secure]
+        return unless three_d_secure_options
+
+        auth_data = {
+          cavv: three_d_secure_options[:cavv],
+          xid: three_d_secure_options[:xid],
+          eci: three_d_secure_options[:eci],
+          version: three_d_secure_options[:version],
+          reference_id: three_d_secure_options[:three_ds_server_trans_id],
+          status: three_d_secure_options[:authentication_response_status] || three_d_secure_options[:directory_response_status]
+        }.compact
+
+        return if auth_data.empty?
+
+        extra_params[:auth_data] = auth_data
+      end
+
       def parse(body)
         JSON.parse(body)
       end
@@ -178,7 +214,7 @@ module ActiveMerchant #:nodoc:
         begin
           parse(raw_response)
         rescue JSON::ParserError
-          {'status' => 'Internal server error'}
+          { 'status' => 'Internal server error' }
         end
       end
 
@@ -220,10 +256,13 @@ module ActiveMerchant #:nodoc:
       def card_success_from(response)
         return false if response.include?('error')
         return true if response['message'] == 'card deleted'
+
         response['card']['status'] == 'valid'
       end
 
       def message_from(response)
+        return response['detail'] if response['detail'].present?
+
         if !success_from(response) && response['error']
           response['error'] && response['error']['type']
         else
@@ -258,11 +297,10 @@ module ActiveMerchant #:nodoc:
 
       def error_code_from(response)
         return if success_from(response)
+
         if response['transaction']
           detail = response['transaction']['status_detail']
-          if STANDARD_ERROR_CODE_MAPPING.include?(detail)
-            return STANDARD_ERROR_CODE[STANDARD_ERROR_CODE_MAPPING[detail]]
-          end
+          return STANDARD_ERROR_CODE[STANDARD_ERROR_CODE_MAPPING[detail]] if STANDARD_ERROR_CODE_MAPPING.include?(detail)
         elsif response['error']
           return STANDARD_ERROR_CODE[:config_error]
         end

@@ -6,7 +6,7 @@ module ActiveMerchant #:nodoc:
 
       self.supported_countries = ['US']
       self.default_currency = 'USD'
-      self.supported_cardtypes = [:visa, :master, :american_express, :discover]
+      self.supported_cardtypes = %i[visa master american_express discover]
 
       self.homepage_url = 'https://cardconnect.com/'
       self.display_name = 'Card Connect'
@@ -68,8 +68,8 @@ module ActiveMerchant #:nodoc:
       end
 
       def require_valid_domain!(options, param)
-        if options.key?(param)
-          raise ArgumentError.new('not a valid cardconnect domain') unless /\Dcardconnect.com:\d{1,}\D/ =~ options[param]
+        if options[param]
+          raise ArgumentError.new('not a valid cardconnect domain') unless /https:\/\/\D*cardconnect.com/ =~ options[param]
         end
       end
 
@@ -88,6 +88,7 @@ module ActiveMerchant #:nodoc:
           add_address(post, options)
           add_customer_data(post, options)
           add_3DS(post, options)
+          add_additional_data(post, options)
           post[:capture] = 'Y'
           commit('auth', post)
         end
@@ -102,6 +103,7 @@ module ActiveMerchant #:nodoc:
         add_address(post, options)
         add_customer_data(post, options)
         add_3DS(post, options)
+        add_additional_data(post, options)
         commit('auth', post)
       end
 
@@ -141,8 +143,8 @@ module ActiveMerchant #:nodoc:
       def unstore(authorization, options = {})
         account_id, profile_id = authorization.split('|')
         commit('profile', {},
-               verb: :delete,
-               path: "/#{profile_id}/#{account_id}/#{@options[:merchant_id]}")
+          verb: :delete,
+          path: "/#{profile_id}/#{account_id}/#{@options[:merchant_id]}")
       end
 
       def supports_scrubbing?
@@ -150,12 +152,12 @@ module ActiveMerchant #:nodoc:
       end
 
       def scrub(transcript)
-        transcript
-          .gsub(%r((Authorization: Basic )\w+), '\1[FILTERED]')
-          .gsub(%r(("cvv2\\":\\")\d*), '\1[FILTERED]')
-          .gsub(%r(("merchid\\":\\")\d*), '\1[FILTERED]')
-          .gsub(%r((&?"account\\":\\")\d*), '\1[FILTERED]')
-          .gsub(%r((&?"token\\":\\")\d*), '\1[FILTERED]')
+        transcript.
+          gsub(%r((Authorization: Basic )\w+), '\1[FILTERED]').
+          gsub(%r(("cvv2\\":\\")\d*), '\1[FILTERED]').
+          gsub(%r(("merchid\\":\\")\d*), '\1[FILTERED]').
+          gsub(%r((&?"account\\":\\")\d*), '\1[FILTERED]').
+          gsub(%r((&?"token\\":\\")\d*), '\1[FILTERED]')
       end
 
       private
@@ -231,10 +233,12 @@ module ActiveMerchant #:nodoc:
           post[:items] = options[:items].map do |item|
             updated = {}
             item.each_pair do |k, v|
-              updated.merge!(k.to_s.gsub(/_/, '') => v)
+              updated.merge!(k.to_s.delete('_') => v)
             end
+            updated
           end
         end
+        post[:userfields] = options[:user_fields] if options[:user_fields]
       end
 
       def add_3DS(post, options)
@@ -267,6 +271,7 @@ module ActiveMerchant #:nodoc:
       end
 
       def commit(action, parameters, verb: :put, path: '')
+        parameters[:frontendid] = application_id
         parameters[:merchid] = @options[:merchant_id]
         url = url(action, path)
         response = parse(ssl_request(verb, url, post_data(parameters), headers))
@@ -281,6 +286,10 @@ module ActiveMerchant #:nodoc:
           test: test?,
           error_code: error_code_from(response)
         )
+      rescue ResponseError => e
+        return Response.new(false, 'Unable to authenticate.  Please check your credentials.', {}, test: test?) if e.response.code == '401'
+
+        raise
       end
 
       def success_from(response)
